@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>DiscMath Combination Quiz — Asian SEED</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --school-blue:#0a3d62;
+  --school-yellow:#f6b93b;
+  --light-gray:#f2f2f2;
+  --muted:#6b7280;
+}
+*{box-sizing:border-box}
+body{
+  font-family:Arial, sans-serif;
+  background:var(--light-gray);
+  margin:0;
+  padding:20px;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* Header bar */
+.header-bar{
+  max-width:900px;margin:0 auto 18px;
+  background:linear-gradient(90deg,var(--school-blue),#08304b);
+  color:white;padding:12px 18px;border-radius:10px;display:flex;align-items:center;gap:14px;
+  box-shadow:0 4px 12px rgba(10,61,98,0.12);
+}
+.header-logo{width:72px;height:72px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,0.06);padding:6px}
+.header-title{font-weight:700;font-size:20px;background:var(--school-yellow);color:#071728;padding:8px 12px;border-radius:6px}
+
+/* Main container */
+.wrapper{max-width:900px;margin:0 auto}
+.container{
+  background:white;padding:22px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.06);
+}
+.top-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h2{margin:0;color:var(--school-blue)}
+.metadata{color:var(--muted);font-size:14px}
+
+/* Login card */
+.login-card{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.login-card input{padding:10px;border:2px solid var(--school-blue);border-radius:6px;width:100%}
+.login-card .full{grid-column:1 / -1}
+
+/* quiz layout */
+#questionContainer p{margin:8px 0 6px}
+input[type="text"]{padding:8px;border:1px solid #d1d5db;border-radius:6px;width:100%;margin-bottom:8px}
+.controls{display:flex;gap:10px;flex-wrap:wrap}
+button{cursor:pointer;border:0;padding:10px 14px;border-radius:6px;font-weight:600}
+.primary{background:var(--school-blue);color:white}
+.ghost{background:transparent;border:1px solid #cbd5e1;color:var(--school-blue)}
+.danger{background:#dc2626;color:white}
+
+/* results */
+.results-list{margin-top:12px}
+.result-item{padding:8px;border-radius:6px;background:#f8fafc;margin-bottom:6px;font-size:14px}
+
+/* footer / admin */
+.footer{margin-top:14px;text-align:center;color:var(--muted);font-size:13px}
+.admin-panel{margin-top:12px;padding:10px;border-radius:8px;background:#fbfbfb;border:1px dashed #e6eef6;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.small{font-size:13px;color:var(--muted)}
+
+/* responsive */
+@media (max-width:640px){
+  .login-card{grid-template-columns:1fr}
+  .header-title{font-size:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="header-bar">
+  <img src="C:\Users\Jay De Guzman\Desktop\asat.png" class="header-logo" id="headerLogo" alt="ASAT logo">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div class="header-title">Asian SEED Academy of Technology</div>
+    <div style="color:rgba(255,255,255,0.9);font-weight:600">DiscMath Combination Quiz</div>
+  </div>
+</div>
+
+<div class="wrapper">
+  <div class="container" id="mainContainer">
+
+    <div class="top-row">
+      <div>
+        <h2>DiscMath Combination Quiz</h2>
+        <div class="metadata">Answer once per Student ID. Admin can reset attempts.</div>
+      </div>
+
+      <div style="text-align:right">
+        <div class="small">Timer (optional)</div>
+        <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
+          <label class="small"><input type="checkbox" id="enableTimer"> Enable</label>
+          <input id="timerSeconds" type="number" min="30" value="600" style="width:110px;padding:6px;border-radius:6px;border:1px solid #d1d5db">
+        </div>
+        <div id="countdown" class="small" style="margin-top:6px;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <!-- Student login -->
+    <div id="loginSection" style="margin-top:14px">
+      <div style="font-weight:700;margin-bottom:8px">Enter your details</div>
+      <div class="login-card">
+        <input id="studentName" placeholder="Student name">
+        <input id="studentID" placeholder="Student ID (unique)">
+        <input class="full" id="studentClass" placeholder="Class / Section (optional)">
+        <button id="startBtn" class="primary full" style="width:100%" onclick="startAsStudent()">Start Quiz</button>
+      </div>
+      <div id="alreadyMsg" style="display:none;color:#b91c1c;font-weight:600"></div>
+    </div>
+
+    <!-- Quiz Section -->
+    <div id="quizSection" style="display:none;margin-top:12px">
+      <div id="questionContainer"></div>
+      <div class="controls" style="margin-top:12px">
+        <button id="nextBtn" class="primary" onclick="nextQuestion()">Next</button>
+        <button id="quitBtn" class="ghost" onclick="quitQuiz()">Quit</button>
+        <div id="warning" style="color:#b91c1c;display:none;font-weight:700">⚠️ You switched tabs or lost focus too many times — auto-failed.</div>
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <div id="resultSection" style="display:none;margin-top:12px">
+      <h3>Your Result</h3>
+      <p id="scoreText" style="font-weight:700"></p>
+      <div class="results-list" id="resultsList"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button id="pdfBtn" class="primary" onclick="downloadPDF()">Download PDF</button>
+        <button class="ghost" onclick="saveRecordLocally()">Save Record (local)</button>
+      </div>
+    </div>
+
+    <!-- Admin panel (visible always but operations require password) -->
+    <div class="admin-panel" style="margin-top:18px">
+      <div>
+        <div style="font-weight:700">Admin Controls</div>
+        <div class="small" style="margin-top:6px">Reset attempts by Student ID or clear all attempts. (Requires admin password)</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="adminTargetID" placeholder="Student ID (or leave blank to clear all)" style="padding:8px;border-radius:6px;border:1px solid #d1d5db">
+        <button class="primary" onclick="adminResetOne()">Reset Target</button>
+        <button class="danger" onclick="adminResetAll()">Reset All</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>© Asian SEED Academy of Technology</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">This quiz stores attempt data in the browser's localStorage. Admin password is configurable in the script.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* -------------------------
+  CONFIG (change as needed)
+   - ADMIN_PASSWORD: change to set your admin code
+   - ALLOWED_FOCUS_LOSSES: how many times student may lose focus before auto-fail (2 recommended)
+--------------------------*/
+const ADMIN_PASSWORD = "@phr0dit3!"; // <-- change this to your desired admin password
+const ALLOWED_FOCUS_LOSSES = 2;
+
+/* -------------------------
+  QUIZ DATA
+--------------------------*/
+const quizQuestions = [
+  { question: "1. Formula used in Combinations WITHOUT repetition", inputs: [{label:"Answer:", correct:"n!/r!(n-r)!"}] },
+  { question: "2. Formula used in Combinations WITH repetition", inputs: [{label:"Answer:", correct:"(n+r-1)!/r!(n-1)!"}] },
+  { question: "3. Selecting which seven players will be in the relay game on an 8 persons team.", inputs: [{label:"Answer:", correct:"8"}] },
+  { question: "4. There are 15 applicants for two IT expert positions.", inputs: [{label:"Answer:", correct:"105"}] },
+  { question: "5. 3 out of 15 students will ride in a van instead of an electric car.", inputs: [{label:"Answer:", correct:"455"}] },
+  { question: "6. A class has 10 students, and the teacher needs to choose 3 students to represent the class in a science quiz.", inputs: [{label:"Answer:", correct:"120"}] },
+  { question: "7. A restaurant offers 6 different appetizers, but a customer only wants to order 2 appetizers to share.", inputs: [{label:"Answer:", correct:"15"}] },
+  { question: "8. Ice cream shop: 5 flavors, 3 scoops, repetition allowed.", inputs: [{label:"Answer:", correct:"35"}] },
+  { question: "9. Tea shop: 4 teas, choose 3 teabags, repetition allowed.", inputs: [{label:"Answer:", correct:"20"}] },
+  { question: "10. Flower shop: 6 types of flowers, choose 4 flowers, repetition allowed.", inputs: [{label:"Answer:", correct:"126"}] }
+];
+
+/* -------------------------
+  State
+--------------------------*/
+let student = { name: "", id: "", cls: "" };
+let currentQuestion = 0;
+let correctness = [];
+let results = [];
+let rawAnswers = [];
+let failed = false;
+let quizStart = null;
+let focusLossCount = 0;
+let timerInterval = null;
+
+/* -------------------------
+  UTIL: storage helpers
+--------------------------*/
+function getAttempts() {
+  try {
+    return JSON.parse(localStorage.getItem("quizAttempts") || "{}");
+  } catch(e) { return {}; }
+}
+function setAttempts(obj) { localStorage.setItem("quizAttempts", JSON.stringify(obj)); }
+
+function getRecordKey(id) { return `quizRecord_${id}`; }
+
+/* -------------------------
+  LOGIN & START
+--------------------------*/
+function startAsStudent(){
+  const name = document.getElementById("studentName").value.trim();
+  const id = document.getElementById("studentID").value.trim();
+  const cls = document.getElementById("studentClass").value.trim();
+
+  if(!name || !id){ alert("Please enter your name and Student ID."); return; }
+
+  student = { name, id, cls };
+
+  const attempts = getAttempts();
+  if(attempts[id] && attempts[id].taken){
+    // already taken — show message and option for admin reset
+    document.getElementById("alreadyMsg").style.display = "block";
+    document.getElementById("alreadyMsg").innerText = `Student ID ${id} has already taken the quiz. Ask admin to reset if necessary.`;
+    return;
+  }
+
+  // hide login, show quiz
+  document.getElementById("loginSection").style.display = "none";
+  document.getElementById("quizSection").style.display = "block";
+  currentQuestion = 0;
+  correctness = [];
+  results = [];
+  rawAnswers = [];
+  failed = false;
+  focusLossCount = 0;
+  quizStart = Date.now();
+  showQuestion(currentQuestion);
+
+  // timer setup
+  const enabled = document.getElementById("enableTimer").checked;
+  const secs = parseInt(document.getElementById("timerSeconds").value) || 0;
+  if(enabled && secs > 0){
+    startTimer(secs);
+  } else {
+    document.getElementById("countdown").innerText = "";
+  }
+}
+
+/* -------------------------
+  QUESTIONS UI
+--------------------------*/
+function normalizeAnswer(str){ return (str||"").trim(); }
+
+function showQuestion(index){
+  const q = quizQuestions[index];
+  const container = document.getElementById("questionContainer");
+  container.innerHTML = `<p><b>${q.question}</b></p>`;
+  q.inputs.forEach((input,i) => {
+    container.innerHTML += `${input.label}<br><input type="text" id="q${index}_input${i}" placeholder="Type your answer here"><br>`;
+  });
+  document.getElementById("nextBtn").innerText = index === quizQuestions.length -1 ? "Submit" : "Next";
+}
+
+/* -------------------------
+  ANSWER HANDLING
+--------------------------*/
+function nextQuestion(){
+  if(failed) return;
+  const q = quizQuestions[currentQuestion];
+  const userInputs = q.inputs.map((input,i) => normalizeAnswer(document.getElementById(`q${currentQuestion}_input${i}`).value));
+  const allCorrect = q.inputs.every((input,i) => normalizeAnswer(input.correct) === userInputs[i]);
+  results.push(`Q${currentQuestion+1}: ${allCorrect ? "Correct" : "Wrong"}, Correct Answer: ${q.inputs[0].correct}`);
+  correctness.push(allCorrect);
+  rawAnswers.push({ question: q.question, answer: userInputs.join(", ") });
+
+  currentQuestion++;
+  if(currentQuestion < quizQuestions.length){
+    showQuestion(currentQuestion);
+  } else {
+    const score = correctness.filter(x=>x).length;
+    finishQuiz(score, results);
+  }
+}
+
+function finishQuiz(score, resultsArr){
+  // stop timer
+  if(timerInterval){ clearInterval(timerInterval); timerInterval = null; document.getElementById("countdown").innerText = ""; }
+
+  // save attempt per studentID
+  const attempts = getAttempts();
+  attempts[student.id] = {
+    taken: true,
+    date: new Date().toISOString(),
+    score,
+    durationSec: Math.floor((Date.now()-quizStart)/1000)
+  };
+  setAttempts(attempts);
+
+  // save full record for PDF
+  const record = {
+    student,
+    date: new Date().toLocaleString(),
+    score,
+    durationSec: attempts[student.id].durationSec,
+    results: resultsArr,
+    rawAnswers
+  };
+  localStorage.setItem(getRecordKey(student.id), JSON.stringify(record));
+
+  // show results UI
+  document.getElementById("quizSection").style.display = "none";
+  document.getElementById("resultSection").style.display = "block";
+  document.getElementById("scoreText").innerText = failed ? "You scored 0. Auto-failed due to rule violation." : `You scored ${score} out of ${quizQuestions.length}.`;
+  const listEl = document.getElementById("resultsList"); listEl.innerHTML = "";
+  resultsArr.forEach(r => {
+    const div = document.createElement("div"); div.className = "result-item"; div.innerText = r; listEl.appendChild(div);
+  });
+}
+
+/* -------------------------
+  ANTI-CHEAT: focus & visibility
+   - allow limited focus losses (ALLOWED_FOCUS_LOSSES)
+   - on exceed -> autoFail
+--------------------------*/
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden) handleFocusLoss();
+});
+window.addEventListener("blur", () => handleFocusLoss());
+function handleFocusLoss(){
+  if(failed) return;
+  focusLossCount++;
+  if(focusLossCount > ALLOWED_FOCUS_LOSSES){
+    autoFail();
+  } else {
+    // show soft notice
+    const w = document.getElementById("warning");
+    w.style.display = "inline-block";
+    w.innerText = `⚠️ You lost focus ${focusLossCount} time(s). Further loss will auto-fail.`;
+    setTimeout(()=>{ if(!failed) w.style.display = "none"; }, 4000);
+  }
+}
+function autoFail(){
+  if(failed) return;
+  failed = true;
+  // produce auto results showing all wrong
+  const autoResults = quizQuestions.map((q,i) => `Q${i+1}: Wrong, Correct Answer: ${q.inputs[0].correct}`);
+  finishQuiz(0, autoResults);
+  document.getElementById("warning").style.display = "inline-block";
+  document.getElementById("warning").innerText = "⚠️ Auto-failed due to repeated focus loss or tab switch.";
+}
+
+/* -------------------------
+  QUIT (allow quit but marks as taken)
+--------------------------*/
+function quitQuiz(){
+  if(!confirm("Quit quiz? This will record that you attempted (even if incomplete).")) return;
+  // mark as taken with zero score
+  failed = true;
+  autoFail();
+}
+
+/* -------------------------
+  TIMER (optional)
+--------------------------*/
+function startTimer(seconds){
+  let remaining = seconds;
+  document.getElementById("countdown").innerText = `Time left: ${formatSec(remaining)}`;
+  timerInterval = setInterval(()=>{
+    remaining--;
+    if(remaining <= 0){
+      clearInterval(timerInterval); timerInterval = null;
+      // time up -> auto fail
+      failed = true;
+      autoFail();
+    } else {
+      document.getElementById("countdown").innerText = `Time left: ${formatSec(remaining)}`;
+    }
+  }, 1000);
+}
+function formatSec(s){
+  const mm = Math.floor(s/60).toString().padStart(2,'0');
+  const ss = (s%60).toString().padStart(2,'0');
+  return `${mm}:${ss}`;
+}
+
+/* -------------------------
+  PDF generation (includes header + logo)
+--------------------------*/
+async function downloadPDF(){
+  try {
+    const saved = JSON.parse(localStorage.getItem(getRecordKey(student.id)));
+    if(!saved){ alert("No saved record for this student."); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4' });
+    let y = 40;
+    // add logo (drawn from page image to dataURL)
+    const imgEl = document.getElementById('headerLogo');
+    const imgData = await imageToDataURL(imgEl);
+    if(imgData) doc.addImage(imgData, 'PNG', 40, y, 60, 60);
+    doc.setFontSize(20);
+    doc.text("Asian SEED Academy of Technology", 120, y+22);
+    y += 90;
+    doc.setFontSize(14);
+    doc.text(`Student: ${saved.student.name} (${saved.student.id})`, 40, y); y+=18;
+    doc.text(`Class: ${saved.student.cls || '-'}`, 40, y); y+=18;
+    doc.text(`Date: ${saved.date}`, 40, y); y+=18;
+    doc.text(`Score: ${saved.score} / ${quizQuestions.length}`, 40, y); y+=18;
+    doc.text(`Duration (sec): ${saved.durationSec}`, 40, y); y+=22;
+    doc.setFontSize(16); doc.text("Results:", 40, y); y+=18;
+    doc.setFontSize(12);
+    saved.results.forEach(r => {
+      // wrap lines if long
+      const lines = doc.splitTextToSize(r, 500);
+      doc.text(lines, 40, y);
+      y += 16 * lines.length;
+      if(y > 720){ doc.addPage(); y = 40; }
+    });
+    doc.save(`${saved.student.id}_QuizResult.pdf`);
+  } catch(e){
+    console.error(e); alert("PDF generation failed: " + e.message);
+  }
+}
+// helper: convert DOM image element to dataURL
+function imageToDataURL(imgEl){
+  return new Promise((resolve)=>{
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function(){
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width; canvas.height = img.height;
+        const ctx = canvas.getContext('2d'); ctx.drawImage(img,0,0);
+        const dataURL = canvas.toDataURL('image/png');
+        resolve(dataURL);
+      };
+      img.onerror = ()=>resolve(null);
+      img.src = imgEl.src;
+      // if already loaded, ensure onload fired
+      if(imgEl.complete) img.onload();
+    } catch(e){ resolve(null); }
+  });
+}
+
+/* -------------------------
+  Save record locally (duplicate of PDF storage)
+--------------------------*/
+function saveRecordLocally(){
+  const saved = JSON.parse(localStorage.getItem(getRecordKey(student.id)));
+  if(!saved){ alert("No record found."); return; }
+  localStorage.setItem(getRecordKey(student.id), JSON.stringify(saved));
+  alert("Record saved locally (in browser localStorage).");
+}
+
+/* -------------------------
+  ADMIN: reset single ID or all
+   - prompts for password (not sent anywhere)
+--------------------------*/
+function askAdminPassword(){
+  const p = prompt("Enter admin password:");
+  if(p === null) return false;
+  if(p !== ADMIN_PASSWORD){ alert("Incorrect admin password."); return false; }
+  return true;
+}
+
+function adminResetOne(){
+  if(!askAdminPassword()) return;
+  const target = document.getElementById("adminTargetID").value.trim();
+  if(!target){
+    if(!confirm("No Student ID supplied. To reset a single student please enter the Student ID. Use 'Reset All' to clear all attempts.")) return;
+  } else {
+    const attempts = getAttempts();
+    if(attempts[target]) delete attempts[target];
+    setAttempts(attempts);
+    // remove record too
+    localStorage.removeItem(getRecordKey(target));
+    alert(`Reset complete for Student ID: ${target}`);
+  }
+}
+
+function adminResetAll(){
+  if(!askAdminPassword()) return;
+  if(!confirm("Are you sure? This will clear all attempts and records stored in this browser.")) return;
+  localStorage.removeItem("quizAttempts");
+  // remove all quizRecord_* keys
+  Object.keys(localStorage).forEach(k => { if(k.indexOf("quizRecord_") === 0) localStorage.removeItem(k); });
+  alert("All attempts and records cleared.");
+}
+
+/* -------------------------
+  INITIALIZATION: keep UI state if already logged in
+--------------------------*/
+(function init(){
+  // disable form autofill weirdness
+  document.getElementById("studentName").autocomplete = "off";
+  document.getElementById("studentID").autocomplete = "off";
+
+  // if student already taken (after login) we show message when they enter ID
+  document.getElementById("studentID").addEventListener("input", (e)=>{
+    const id = e.target.value.trim();
+    const attempts = getAttempts();
+    if(id && attempts[id] && attempts[id].taken){
+      document.getElementById("alreadyMsg").style.display = "block";
+      document.getElementById("alreadyMsg").innerText = `Student ID ${id} has already taken the quiz. Ask admin to reset if necessary.`;
+    } else {
+      document.getElementById("alreadyMsg").style.display = "none";
+    }
+  });
+
+  // keyboard-friendly: Enter to start if fields filled
+  document.getElementById("studentID").addEventListener("keydown", (e)=>{ if(e.key === "Enter") startAsStudent(); });
+})();
+</script>
+</body>
+</html>
